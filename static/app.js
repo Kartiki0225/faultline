@@ -90,6 +90,7 @@ const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ "&": "&am
 const clock = (seconds) => new Date(seconds * 1000).toLocaleTimeString("en-GB");
 
 let faultKey = null;
+let shownWarnings = null;
 let shownHistory = null;
 function showFaults(snapshot) {
   const { faults, warnings, events, lamps } = snapshot;
@@ -98,14 +99,18 @@ function showFaults(snapshot) {
   $("#fault-count").textContent = `${faults.length} active`;
   $("#fault-count").classList.toggle("some", faults.length > 0);
 
-  $("#warnings").innerHTML = warnings.map((warning) => `
+  // Rebuild a list only when its content changes, so it does not flicker.
+  const warningKey = JSON.stringify(warnings);
+  if (warningKey !== shownWarnings) {
+    shownWarnings = warningKey;
+    $("#warnings").innerHTML = warnings.map((warning) => `
     <article class="fault prediction">
       <header><span class="code">PREDICTION</span><span>before the ECU reports it</span></header>
       <h4>Coolant temperature is climbing</h4>
       <p>Rising ${warning.rate} °C per second. It will reach the ${warning.limit} °C limit in about <b>${warning.seconds_left} s</b>.</p>
     </article>`).join("");
+  }
 
-  // Rebuild the list only when the set of faults changes, so it does not flicker.
   const key = faults.map((f) => `${f.spn}/${f.fmi}/${f.count}`).join(",");
   if (key !== faultKey) {
     faultKey = key;
