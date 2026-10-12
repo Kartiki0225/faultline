@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FaultLine · J1939 engine diagnostics</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d0e0f'/%3E%3Cpath d='M4 17h7l3-8 5 14 3-6h6' fill='none' stroke='%23f5a524' stroke-width='2.6' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark">FAULT<i>LINE</i></span>
+    <span class="tag">J1939 engine diagnostics</span>
+  </div>
+
+  <div class="bus-status">
+    <span class="dot" id="link-dot"></span>
+    <span id="link-text">Connecting</span>
+    <span class="sep"></span>
+    <span><b id="frame-rate">0</b> frames/s</span>
+    <span class="sep"></span>
+    <span>Source 0x00 · Engine #1</span>
+  </div>
+
+  <div class="lamps" title="Lamp states come from the DM1 message">
+    <div class="lamp red" id="lamp-red"><span>STOP</span></div>
+    <div class="lamp amber" id="lamp-amber"><span>WARNING</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- 01: the simulated engine. The only part of the page that does not come from CAN frames. -->
+  <section class="panel bench">
+    <h2><em>01</em> Test bench</h2>
+
+    <div class="engine-state">
+      <div>
+        <span class="label">Engine</span>
+        <strong id="engine-state">OFF</strong>
+      </div>
+      <button class="key" id="start-stop">Start</button>
+    </div>
+
+    <label class="throttle">
+      <span class="label">Throttle <b id="throttle-value">0%</b></span>
+      <input type="range" id="throttle" min="0" max="100" value="0">
+    </label>
+
+    <span class="label">Cause a failure</span>
+    <div class="failures">
+      {% for key, name in faults.items() %}
+      <button class="failure" data-fault="{{ key }}">{{ name }}</button>
+      {% endfor %}
+    </div>
+    <button class="repair" id="repair">Repair everything</button>
+
+    <p class="note">These controls act on the simulated engine. Everything else on this page is decoded from the CAN frames it sends.</p>
+  </section>
+
+  <!-- 02: live values decoded from the bus -->
+  <section class="panel instruments">
+    <h2><em>02</em> Live data</h2>
+
+    <div class="cluster">
+      <div class="gauge side" id="gauge-coolant"></div>
+      <div class="gauge tach" id="gauge-rpm"></div>
+      <div class="gauge side" id="gauge-oil"></div>
+    </div>
+
+    <div class="readouts" id="readouts"></div>
+
+    <div class="trends">
+      <figure><figcaption>Engine speed <span>last 60 s</span></figcaption><canvas id="trend-rpm"></canvas></figure>
+      <figure><figcaption>Coolant temperature <span>limit 104 °C</span></figcaption><canvas id="trend-coolant"></canvas></figure>
+      <figure><figcaption>Oil pressure <span>kPa</span></figcaption><canvas id="trend-oil"></canvas></figure>
+    </div>
+  </section>
+
+  <!-- 03: faults reported by the ECU, explained -->
+  <section class="panel faults">
+    <h2><em>03</em> Diagnostics <span class="count" id="fault-count">0 active</span></h2>
+    <div id="warnings"></div>
+    <div id="fault-list"></div>
+
+    <h3>History</h3>
+    <ol class="history" id="history"></ol>
+  </section>
+
+  <!-- 04: the raw bus -->
+  <section class="panel bus">
+    <h2>
+      <em>04</em> CAN bus
+      <span class="tabs">
+        <button class="tab active" data-view="ids">By message</button>
+        <button class="tab" data-view="trace">Trace</button>
+      </span>
+      <a class="download" href="/api/log">Download log</a>
+    </h2>
+
+    <div class="bus-body">
+      <div class="frames">
+        <table id="id-table">
+          <thead><tr><th>ID</th><th>PGN</th><th>Name</th><th>Data</th><th class="num">Period</th><th class="num">Count</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <pre id="trace" hidden></pre>
+      </div>
+
+      <aside class="inspector" id="inspector">
+        <p class="hint">Select a message to see how its bits are decoded.</p>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<script src="{{ url_for('static', filename='gauges.js') }}"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
